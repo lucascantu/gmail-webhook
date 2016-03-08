@@ -2,3 +2,4 @@
 gmail-webhook
 credentials/
 .python-version
+*.yml
