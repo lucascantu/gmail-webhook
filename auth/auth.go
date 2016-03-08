@@ -42,9 +42,6 @@ func GetTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 // It returns the generated credential path/filename.
 func TokenCacheFile(c *cli.Context) (string, error) {
 	if c.IsSet("cache-file") {
-		if _, err := os.Stat(c.String("cache-file")); os.IsNotExist(err) {
-			return "", fmt.Errorf("cache file %s does not exist\n", c.String("cache-file"))
-		}
 		return c.String("cache-file"), nil
 	}
 	usr, err := user.Current()
