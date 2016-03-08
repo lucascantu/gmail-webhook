@@ -1,3 +1,4 @@
 *.json
 gmail-webhook
 credentials/
+.python-version
