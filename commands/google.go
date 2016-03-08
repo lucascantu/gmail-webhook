@@ -16,7 +16,7 @@ import (
 )
 
 func ValidateWatchOptions(c *cli.Context) error {
-	for _, v := range []string{"topic", "project", "secret-file"} {
+	for _, v := range []string{"topic", "project", "gmail-secret"} {
 		if !c.IsSet(v) {
 			return fmt.Errorf("missing command line argument %s\n", v)
 		}
@@ -26,7 +26,7 @@ func ValidateWatchOptions(c *cli.Context) error {
 
 func ValidateGmailOptions(c *cli.Context) error {
 	if !c.IsSet("gmail-secret") {
-		return fmt.Errorf("missing command line argument %s\n", "secret-file")
+		return fmt.Errorf("missing command line argument %s\n", "gmail-secret")
 	}
 	return nil
 }

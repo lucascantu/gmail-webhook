@@ -14,3 +14,4 @@ CMD ["go-wrapper", "run"]
 COPY . /go/src/app
 RUN go-wrapper download \
     && go-wrapper install
+EXPOSE 9998
