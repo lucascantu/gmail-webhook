@@ -25,7 +25,7 @@ func ValidateWatchOptions(c *cli.Context) error {
 }
 
 func ValidateGmailOptions(c *cli.Context) error {
-	if !c.IsSet("secret-file") {
+	if !c.IsSet("gmail-secret") {
 		return fmt.Errorf("missing command line argument %s\n", "secret-file")
 	}
 	return nil
