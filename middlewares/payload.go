@@ -12,7 +12,7 @@ import (
 type GmailPayload struct {
 	Message struct {
 		Data      string `json:"data"`
-		MessageID int    `json:"message_id"`
+		MessageID string `json:"message_id"`
 	} `json:"message"`
 	Subscription string `json:"subscription"`
 }
