@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,11 +33,13 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	payload, _ := ctx.Value("payload").(*middlewares.GmailPayload)
 	data, err := base64.URLEncoding.DecodeString(payload.Message.Data)
 	if err != nil {
+		log.Printf("error in decoding base64 data %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var u user
 	if err := json.NewDecoder(bytes.NewReader(data)).Decode(&u); err != nil {
+		log.Printf("error in decoding json data %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -45,6 +48,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	for {
 		respList, err := histListCall.Do()
 		if err != nil {
+			log.Printf("error in making history call %s\n", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -70,6 +74,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 					},
 				)
 				if err != nil {
+					log.Printf("error in creating github issue %s\n", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
