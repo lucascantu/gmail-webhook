@@ -59,9 +59,12 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		}
 		break
 	}
+	log.Printf("got %d histories\n", len(histList))
 	var issues []string
 	for _, h := range histList {
+		log.Printf("added %d labels\n", len(h.LabelsAdded))
 		for _, l := range h.LabelsAdded {
+			log.Printf("got %d label ids\n", len(l.LabelIds))
 			if dicty.MatchLabel(l.LabelIds) {
 				subject := parseSubject(l.Message.Payload)
 				body := l.Message.Payload.Body.Data
@@ -83,14 +86,17 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		}
 	}
 	if len(issues) > 0 {
+		log.Printf("created issues %s\n", strings.Join(issues, " "))
 		fmt.Fprintf(w, "created issues %s\n", strings.Join(issues, " "))
 		return
 	}
+	log.Println("No issues created")
 	w.Write([]byte("No issue created"))
 }
 
 func (dicty *DscClient) MatchLabel(labels []string) bool {
 	for _, name := range labels {
+		log.Printf("got label %s\n", name)
 		if name == dicty.Label {
 			return true
 		}
