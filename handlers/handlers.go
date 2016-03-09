@@ -43,9 +43,14 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(u.HistoryID)
+
+	pageToken := ""
 	var histList []*gmail.History
 	for {
+		histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(u.HistoryID)
+		if pageToken != "" {
+			histListCall = histListCall.PageToken(pageToken)
+		}
 		respList, err := histListCall.Do()
 		if err != nil {
 			log.Printf("error in making history call %s\n", err)
@@ -53,11 +58,10 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 			return
 		}
 		histList = append(histList, respList.History...)
-		if len(respList.NextPageToken) > 0 {
-			histListCall = histListCall.PageToken(respList.NextPageToken)
-			continue
+		if respList.NextPageToken == "" {
+			break
 		}
-		break
+		pageToken = respList.NextPageToken
 	}
 	log.Printf("got %d histories\n", len(histList))
 	var issues []string
