@@ -46,6 +46,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 
 	pageToken := ""
 	var histList []*gmail.History
+	log.Println("history id %d\n", u.HistoryID)
 	for {
 		histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(u.HistoryID)
 		if pageToken != "" {
@@ -58,12 +59,13 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 			return
 		}
 		histList = append(histList, respList.History...)
+		log.Printf("got %d histories\n", len(respList.History))
 		if respList.NextPageToken == "" {
 			break
 		}
 		pageToken = respList.NextPageToken
 	}
-	log.Printf("got %d histories\n", len(histList))
+	log.Printf("got %d list of histories\n", len(histList))
 	var issues []string
 	for _, h := range histList {
 		log.Printf("added %d labels\n", len(h.LabelsAdded))
