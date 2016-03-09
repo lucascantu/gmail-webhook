@@ -25,7 +25,7 @@ func DecodeMiddleware(h apollo.Handler) apollo.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		h.ServeHTTP(context.WithValue(ctx, "payload", payload), w, r)
+		h.ServeHTTP(context.WithValue(ctx, "payload", &payload), w, r)
 	}
 	return apollo.HandlerFunc(fn)
 }

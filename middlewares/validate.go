@@ -15,7 +15,7 @@ type GmailSubscription struct {
 
 func (s *GmailSubscription) ValidateMiddleware(h apollo.Handler) apollo.Handler {
 	fn := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		payload, ok := ctx.Value("payload").(GmailPayload)
+		payload, ok := ctx.Value("payload").(*GmailPayload)
 		if !ok {
 			log.Println("error in retrieving payload from *payload*")
 			http.Error(w, "unable to retrieve payload from *payload*", http.StatusInternalServerError)
