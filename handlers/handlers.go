@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/dictybase/gmail-webhook/history"
@@ -76,28 +75,29 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	}
 	log.Printf("got %d list of histories\n", len(histList))
 	var issues []string
-	title := "Fake"
+	//title := "Fake"
 	for _, h := range histList {
 		log.Printf("added %d labels\n", len(h.LabelsAdded))
 		for _, l := range h.LabelsAdded {
 			log.Printf("got %d label ids\n", len(l.LabelIds))
 			if dicty.MatchLabel(l.LabelIds) {
+				log.Printf("message_id%d history_id:%d\n", l.Message.Id, l.Message.HistoryId)
 				// parseSubject(l.Message.Payload)
-				body := l.Message.Payload.Body.Data
-				issue, _, err := dicty.Github.Issues.Create(
-					dicty.Owner,
-					dicty.Repository,
-					&github.IssueRequest{
-						Title: &title,
-						Body:  &body,
-					},
-				)
-				if err != nil {
-					log.Printf("error in creating github issue %s\n", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				issues = append(issues, strconv.Itoa(*issue.Number))
+				//body := l.Message.Payload.Body.Data
+				//issue, _, err := dicty.Github.Issues.Create(
+				//dicty.Owner,
+				//dicty.Repository,
+				//&github.IssueRequest{
+				//Title: &title,
+				//Body:  &body,
+				//},
+				//)
+				//if err != nil {
+				//log.Printf("error in creating github issue %s\n", err)
+				//http.Error(w, err.Error(), http.StatusInternalServerError)
+				//return
+				//}
+				//issues = append(issues, strconv.Itoa(*issue.Number))
 			}
 		}
 	}
