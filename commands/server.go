@@ -11,6 +11,7 @@ import (
 	"github.com/cyclopsci/apollo"
 	"github.com/dictybase/gmail-webhook/auth"
 	"github.com/dictybase/gmail-webhook/handlers"
+	"github.com/dictybase/gmail-webhook/history"
 	"github.com/dictybase/gmail-webhook/middlewares"
 	"gopkg.in/codegangsta/cli.v1"
 )
@@ -56,12 +57,23 @@ func RunServer(c *cli.Context) {
 			c.String("subscription"),
 		),
 	}
+	hdb, err := history.NewHistoryDb(
+		fmt.Sprintf(
+			"%s:%d",
+			c.String("redis-address"),
+			c.String("redis-port"),
+		),
+	)
+	if err != nil {
+		log.Fatalf("error in connecting to history db %s\n", err)
+	}
 	dsc := &handlers.DscClient{
 		Gmail:      gmClient,
 		Github:     ghClient,
 		Label:      c.String("label"),
 		Repository: c.String("repository"),
 		Owner:      c.String("owner"),
+		HistoryDbh: hdb,
 	}
 	dscChain := apollo.New(
 		apollo.Wrap(logMw.LoggerMiddleware),
