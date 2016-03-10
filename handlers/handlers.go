@@ -76,18 +76,19 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	}
 	log.Printf("got %d list of histories\n", len(histList))
 	var issues []string
+	title := "Fake"
 	for _, h := range histList {
 		log.Printf("added %d labels\n", len(h.LabelsAdded))
 		for _, l := range h.LabelsAdded {
 			log.Printf("got %d label ids\n", len(l.LabelIds))
 			if dicty.MatchLabel(l.LabelIds) {
-				subject := parseSubject(l.Message.Payload)
+				parseSubject(l.Message.Payload)
 				body := l.Message.Payload.Body.Data
 				issue, _, err := dicty.Github.Issues.Create(
 					dicty.Owner,
 					dicty.Repository,
 					&github.IssueRequest{
-						Title: &subject,
+						Title: &title,
 						Body:  &body,
 					},
 				)
@@ -127,11 +128,12 @@ func (dicty *DscClient) MatchLabel(labels []string) bool {
 	return false
 }
 
-func parseSubject(m *gmail.MessagePart) string {
-	for _, h := range m.Headers {
-		if h.Name == "Subject" {
-			return h.Value
-		}
-	}
-	return ""
+func parseSubject(m *gmail.MessagePart) {
+	log.Printf("got %d headers", len(m.Headers))
+	//for _, h := range m.Headers {
+	//if h.Name == "Subject" {
+	//return h.Value
+	//}
+	//}
+	//return ""
 }
