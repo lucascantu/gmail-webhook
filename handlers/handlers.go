@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/dictybase/gmail-webhook/history"
@@ -81,23 +82,29 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		for _, l := range h.LabelsAdded {
 			log.Printf("got %d label ids\n", len(l.LabelIds))
 			if dicty.MatchLabel(l.LabelIds) {
-				log.Printf("message_id%d history_id:%d\n", l.Message.Id, l.Message.HistoryId)
-				// parseSubject(l.Message.Payload)
-				//body := l.Message.Payload.Body.Data
-				//issue, _, err := dicty.Github.Issues.Create(
-				//dicty.Owner,
-				//dicty.Repository,
-				//&github.IssueRequest{
-				//Title: &title,
-				//Body:  &body,
-				//},
-				//)
-				//if err != nil {
-				//log.Printf("error in creating github issue %s\n", err)
-				//http.Error(w, err.Error(), http.StatusInternalServerError)
-				//return
-				//}
-				//issues = append(issues, strconv.Itoa(*issue.Number))
+				log.Printf("message_id%s history_id:%d\n", l.Message.Id, l.Message.HistoryId)
+				msg, err := dicty.Gmail.Users.Messages.Get("me", l.Message.Id).Do()
+				if err != nil {
+					log.Printf("error in retrieving message %s %s", l.Message.Id, err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				title := parseSubject(msg.Payload)
+				body := msg.Payload.Body.Data
+				issue, _, err := dicty.Github.Issues.Create(
+					dicty.Owner,
+					dicty.Repository,
+					&github.IssueRequest{
+						Title: &title,
+						Body:  &body,
+					},
+				)
+				if err != nil {
+					log.Printf("error in creating github issue %s\n", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				issues = append(issues, strconv.Itoa(*issue.Number))
 			}
 		}
 	}
@@ -128,12 +135,12 @@ func (dicty *DscClient) MatchLabel(labels []string) bool {
 	return false
 }
 
-func parseSubject(m *gmail.MessagePart) {
+func parseSubject(m *gmail.MessagePart) string {
 	log.Printf("got %d headers", len(m.Headers))
-	//for _, h := range m.Headers {
-	//if h.Name == "Subject" {
-	//return h.Value
-	//}
-	//}
-	//return ""
+	for _, h := range m.Headers {
+		if h.Name == "Subject" {
+			return h.Value
+		}
+	}
+	return ""
 }
