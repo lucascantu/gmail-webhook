@@ -78,6 +78,16 @@ func main() {
 					Name:  "gmail-secret, gs",
 					Usage: "gmail client secret json file",
 				},
+				cli.StringFlag{
+					Name:  "redis-address",
+					Usage: "IP address of redis-server",
+					Value: "redis",
+				},
+				cli.IntFlag{
+					Name:  "redis-port",
+					Usage: "Port of redis server",
+					Value: 6379,
+				},
 			},
 		},
 		{
@@ -126,6 +136,16 @@ func main() {
 				cli.StringFlag{
 					Name:  "owner",
 					Usage: "Github repository owner",
+				},
+				cli.StringFlag{
+					Name:  "redis-address",
+					Usage: "IP address of redis-server",
+					Value: "redis",
+				},
+				cli.IntFlag{
+					Name:  "redis-port",
+					Usage: "Port of redis server",
+					Value: 6379,
 				},
 			},
 		},
