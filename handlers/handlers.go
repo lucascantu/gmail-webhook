@@ -164,5 +164,9 @@ func parseBody(m *gmail.MessagePart) (string, error) {
 			}
 		}
 	}
-	return m.Body.Data, nil
+	data, err := base64.URLEncoding.DecodeString(m.Body.Data)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
