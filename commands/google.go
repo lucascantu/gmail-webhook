@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/dictybase/gmail-webhook/auth"
+	"github.com/dictybase/gmail-webhook/history"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -105,6 +106,10 @@ func WatchGmailAction(c *cli.Context) {
 	if err := ValidateWatchOptions(c); err != nil {
 		log.Fatal(err)
 	}
+	histDb, err := history.NewHistoryDb(fmt.Sprintf("%s:%d", c.String("redis-address"), c.Int("redis-port")))
+	if err != nil {
+		log.Fatalf("error in connecting to redis database %s\n", err)
+	}
 	gm, err := auth.GetGmailClient(c)
 	if err != nil {
 		log.Fatal(err)
@@ -119,4 +124,9 @@ func WatchGmailAction(c *cli.Context) {
 		log.Fatalf("error in executing watch call %s\n", err)
 	}
 	log.Printf("sucessful watch call with expiration %d and history %d\n", resp.Expiration, resp.HistoryId)
+	err = histDb.AddStartHistory(resp.HistoryId)
+	if err != nil {
+		log.Fatalf("error in adding start history in redis %s\n", err)
+	}
+	log.Printf("added start history %d in redis\n", resp.HistoryId)
 }

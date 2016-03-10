@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dictybase/gmail-webhook/history"
 	"github.com/dictybase/gmail-webhook/middlewares"
 	"github.com/google/go-github/github"
 	"golang.org/x/net/context"
@@ -22,6 +23,7 @@ type DscClient struct {
 	Label      string
 	Repository string
 	Owner      string
+	HistoryDbh *history.HistoryDb
 }
 
 type user struct {
@@ -43,12 +45,19 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	histId, err := dicty.HistoryDbh.GetCurrentHistory()
+	if err != nil {
+		log.Printf("error in getting current history %s\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	pageToken := ""
 	var histList []*gmail.History
-	log.Println("history id %d\n", u.HistoryID)
+	log.Printf("current history id %d\n", histId)
+	log.Printf("got history id %d\n", u.HistoryID)
 	for {
-		histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(u.HistoryID)
+		histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(histId)
 		if pageToken != "" {
 			histListCall = histListCall.PageToken(pageToken)
 		}
@@ -91,6 +100,14 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 			}
 		}
 	}
+
+	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
+	if err != nil {
+		log.Printf("error in setting history %d %s\n", u.HistoryID, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if len(issues) > 0 {
 		log.Printf("created issues %s\n", strings.Join(issues, " "))
 		fmt.Fprintf(w, "created issues %s\n", strings.Join(issues, " "))
