@@ -82,7 +82,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		for _, l := range h.LabelsAdded {
 			log.Printf("got %d label ids\n", len(l.LabelIds))
 			if dicty.MatchLabel(l.LabelIds) {
-				parseSubject(l.Message.Payload)
+				// parseSubject(l.Message.Payload)
 				body := l.Message.Payload.Body.Data
 				issue, _, err := dicty.Github.Issues.Create(
 					dicty.Owner,
