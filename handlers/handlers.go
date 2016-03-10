@@ -74,44 +74,60 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		}
 		pageToken = respList.NextPageToken
 	}
+
 	log.Printf("got %d list of histories\n", len(histList))
-	var issues []string
-	//title := "Fake"
+
+	var messages []*gmail.Message
+	var srvResp string
 	for _, h := range histList {
-		log.Printf("added %d labels\n", len(h.LabelsAdded))
-		for _, l := range h.LabelsAdded {
-			log.Printf("got %d label ids\n", len(l.LabelIds))
-			if dicty.MatchLabel(l.LabelIds) {
-				log.Printf("message_id%s history_id:%d\n", l.Message.Id, l.Message.HistoryId)
-				msg, err := dicty.Gmail.Users.Messages.Get("me", l.Message.Id).Do()
-				if err != nil {
-					log.Printf("error in retrieving message %s %s", l.Message.Id, err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				title := parseSubject(msg.Payload)
-				body, err := parseBody(msg.Payload)
-				if err != nil {
-					log.Printf("error in parsing body %s\n", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				issue, _, err := dicty.Github.Issues.Create(
-					dicty.Owner,
-					dicty.Repository,
-					&github.IssueRequest{
-						Title: &title,
-						Body:  &body,
-					},
-				)
-				if err != nil {
-					log.Printf("error in creating github issue %s\n", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				issues = append(issues, strconv.Itoa(*issue.Number))
+		log.Printf("added %d messages\n", len(h.MessagesAdded))
+		for _, m := range h.Messages {
+			msg, err := dicty.Gmail.Users.Messages.Get("me", m.Id).Do()
+			if err != nil {
+				log.Printf("error in retrieving message %s %s", m.Id, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if dicty.MatchLabel(msg.LabelIds) {
+				messages = append(messages, msg)
 			}
 		}
+	}
+	if len(messages) > 0 {
+		log.Printf("got %d new messages\n", len(messages))
+		var issues []string
+		for _, msg := range messages {
+			title := parseSubject(msg.Payload)
+			body, err := parseBody(msg.Payload)
+			if err != nil {
+				log.Printf("error in parsing body %s\n", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			issue, _, err := dicty.Github.Issues.Create(
+				dicty.Owner,
+				dicty.Repository,
+				&github.IssueRequest{
+					Title: &title,
+					Body:  &body,
+				},
+			)
+			if err != nil {
+				log.Printf("error in creating github issue %s\n", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			issues = append(issues, strconv.Itoa(*issue.Number))
+		}
+		if len(issues) > 0 {
+			log.Printf("created issues %s\n", strings.Join(issues, " "))
+			fmt.Fprintf(w, "created issues %s\n", strings.Join(issues, " "))
+			return
+		}
+		log.Println("No issues created")
+		srvResp = "No issue created"
+	} else {
+		srvResp = "No new messages"
 	}
 
 	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
@@ -120,14 +136,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if len(issues) > 0 {
-		log.Printf("created issues %s\n", strings.Join(issues, " "))
-		fmt.Fprintf(w, "created issues %s\n", strings.Join(issues, " "))
-		return
-	}
-	log.Println("No issues created")
-	w.Write([]byte("No issue created"))
+	w.Write([]byte(srvResp))
 }
 
 func (dicty *DscClient) MatchLabel(labels []string) bool {
