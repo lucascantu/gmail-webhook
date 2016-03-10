@@ -61,7 +61,7 @@ func RunServer(c *cli.Context) {
 		fmt.Sprintf(
 			"%s:%d",
 			c.String("redis-address"),
-			c.String("redis-port"),
+			c.Int("redis-port"),
 		),
 	)
 	if err != nil {
