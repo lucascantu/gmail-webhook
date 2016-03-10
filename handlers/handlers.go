@@ -90,7 +90,12 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 					return
 				}
 				title := parseSubject(msg.Payload)
-				body := msg.Payload.Body.Data
+				body, err := parseBody(msg.Payload)
+				if err != nil {
+					log.Printf("Unable to parse body %s\n", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				issue, _, err := dicty.Github.Issues.Create(
 					dicty.Owner,
 					dicty.Repository,
@@ -143,4 +148,16 @@ func parseSubject(m *gmail.MessagePart) string {
 		}
 	}
 	return ""
+}
+
+func parseBody(m *gmail.MessagePart) (string, error) {
+	log.Printf("mimetype is %s\n", m.MimeType)
+	if m.MimeType == "text/html" {
+		data, err := base64.URLEncoding.DecodeString(m.Body.Data)
+		if err != nil {
+			return "", err
+		}
+		return string(data), err
+	}
+	return m.Body.Data, nil
 }
