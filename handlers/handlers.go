@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/dictybase/gmail-webhook/history"
@@ -52,82 +51,48 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		return
 	}
 
-	pageToken := ""
-	var histList []*gmail.History
-	log.Printf("current history id %d\n", histId)
-	log.Printf("got history id %d\n", u.HistoryID)
-	for {
-		histListCall := gmail.NewUsersHistoryService(dicty.Gmail).List("me").StartHistoryId(histId)
-		if pageToken != "" {
-			histListCall = histListCall.PageToken(pageToken)
-		}
-		respList, err := histListCall.Do()
+	histList, err := dicty.GetHistories(histId)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("got %d list of histories\n", len(histList))
+	if len(histList) == 0 {
+		log.Println("got no history")
+		w.Write([]byte("got no history"))
+		return
+	}
+
+	messages, err := dicty.GetMatchingMessages(histList)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(messages) == 0 {
+		log.Println("got no messages matching label")
+		w.Write([]byte("got no messages matching label"))
+		return
+	}
+
+	issues, err := dicty.GetGithubIssues(messages)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for _, gs := range issues {
+		_, _, err := dicty.Github.Issues.Create(
+			dicty.Owner,
+			dicty.Repository,
+			gs,
+		)
 		if err != nil {
-			log.Printf("error in making history call %s\n", err)
+			log.Println("error in creating github issue %s\n", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		histList = append(histList, respList.History...)
-		log.Printf("got %d histories\n", len(respList.History))
-		if respList.NextPageToken == "" {
-			break
-		}
-		pageToken = respList.NextPageToken
-	}
-
-	log.Printf("got %d list of histories\n", len(histList))
-
-	var messages []*gmail.Message
-	var srvResp string
-	for _, h := range histList {
-		log.Printf("added %d messages\n", len(h.MessagesAdded))
-		for _, m := range h.Messages {
-			msg, err := dicty.Gmail.Users.Messages.Get("me", m.Id).Do()
-			if err != nil {
-				log.Printf("error in retrieving message %s %s", m.Id, err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if dicty.MatchLabel(msg.LabelIds) {
-				messages = append(messages, msg)
-			}
-		}
-	}
-	if len(messages) > 0 {
-		log.Printf("got %d new messages\n", len(messages))
-		var issues []string
-		for _, msg := range messages {
-			title := parseSubject(msg.Payload)
-			body, err := parseBody(msg.Payload)
-			if err != nil {
-				log.Printf("error in parsing body %s\n", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			issue, _, err := dicty.Github.Issues.Create(
-				dicty.Owner,
-				dicty.Repository,
-				&github.IssueRequest{
-					Title: &title,
-					Body:  &body,
-				},
-			)
-			if err != nil {
-				log.Printf("error in creating github issue %s\n", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			issues = append(issues, strconv.Itoa(*issue.Number))
-		}
-		if len(issues) > 0 {
-			log.Printf("created issues %s\n", strings.Join(issues, " "))
-			fmt.Fprintf(w, "created issues %s\n", strings.Join(issues, " "))
-			return
-		}
-		log.Println("No issues created")
-		srvResp = "No issue created"
-	} else {
-		srvResp = "No new messages"
 	}
 
 	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
@@ -136,7 +101,9 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write([]byte(srvResp))
+
+	srvMsg := fmt.Sprintf("created %d issues", len(issues))
+	w.Write([]byte(srvMsg))
 }
 
 func (dicty *DscClient) MatchLabel(labels []string) bool {
@@ -147,6 +114,59 @@ func (dicty *DscClient) MatchLabel(labels []string) bool {
 		}
 	}
 	return false
+}
+
+func (dicty *DscClient) GetHistories(id uint64) ([]*gmail.History, error) {
+	pageToken := ""
+	var histList []*gmail.History
+	for {
+		histListCall := gmail.NewUsersHistoryService(
+			dicty.Gmail).
+			List("me").
+			StartHistoryId(id)
+		if pageToken != "" {
+			histListCall = histListCall.PageToken(pageToken)
+		}
+		respList, err := histListCall.Do()
+		if err != nil {
+			return histList, fmt.Errorf("error in making history call %s\r", err)
+		}
+		histList = append(histList, respList.History...)
+		if respList.NextPageToken == "" {
+			return histList, nil
+		}
+		pageToken = respList.NextPageToken
+	}
+	return histList, nil
+}
+
+func (dicty *DscClient) GetMatchingMessages(histList []*gmail.History) ([]*gmail.Message, error) {
+	var messages []*gmail.Message
+	for _, h := range histList {
+		for _, m := range h.Messages {
+			msg, err := dicty.Gmail.Users.Messages.Get("me", m.Id).Do()
+			if err != nil {
+				return messages, fmt.Errorf("error in retrieving message %s %s", m.Id, err)
+			}
+			if dicty.MatchLabel(msg.LabelIds) {
+				messages = append(messages, msg)
+			}
+		}
+	}
+	return messages, nil
+}
+
+func (dicty *DscClient) GetGithubIssues(msgs []*gmail.Message) ([]*github.IssueRequest, error) {
+	var issues []*github.IssueRequest
+	for _, msg := range msgs {
+		title := parseSubject(msg.Payload)
+		body, err := parseBody(msg.Payload)
+		if err != nil {
+			return issues, fmt.Errorf("error in parsing body %s\n", err)
+		}
+		issues = append(issues, &github.IssueRequest{Title: &title, Body: &body})
+	}
+	return issues, nil
 }
 
 func parseSubject(m *gmail.MessagePart) string {
