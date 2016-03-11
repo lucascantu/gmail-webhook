@@ -12,6 +12,7 @@ import (
 	"github.com/dictybase/gmail-webhook/auth"
 	"github.com/dictybase/gmail-webhook/handlers"
 	"github.com/dictybase/gmail-webhook/history"
+	"github.com/dictybase/gmail-webhook/labels"
 	"github.com/dictybase/gmail-webhook/middlewares"
 	"gopkg.in/codegangsta/cli.v1"
 )
@@ -67,10 +68,20 @@ func RunServer(c *cli.Context) {
 	if err != nil {
 		log.Fatalf("error in connecting to history db %s\n", err)
 	}
+
+	lm := labels.NewLabelManager(gmClient)
+	err = lm.GenerateCache()
+	if err != nil {
+		log.Fatalf("error in generating labels cache %s\n", err)
+	}
+	if !lm.HasLabel(c.String("label")) {
+		log.Fatalf("given label %s does not exist\n", c.String("label"))
+	}
+
 	dsc := &handlers.DscClient{
 		Gmail:      gmClient,
 		Github:     ghClient,
-		Label:      c.String("label"),
+		Label:      lm.Name2Id(c.String("label")),
 		Repository: c.String("repository"),
 		Owner:      c.String("owner"),
 		HistoryDbh: hdb,
