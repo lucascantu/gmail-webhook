@@ -57,7 +57,6 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("got %d list of histories\n", len(histList))
 	if len(histList) == 0 {
 		log.Println("got no history")
 		w.Write([]byte("got no history"))
@@ -108,7 +107,6 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 
 func (dicty *DscClient) MatchLabel(labels []string) bool {
 	for _, name := range labels {
-		log.Printf("got label %s\n", name)
 		if name == dicty.Label {
 			return true
 		}
@@ -170,7 +168,6 @@ func (dicty *DscClient) GetGithubIssues(msgs []*gmail.Message) ([]*github.IssueR
 }
 
 func parseSubject(m *gmail.MessagePart) string {
-	log.Printf("got %d headers", len(m.Headers))
 	for _, h := range m.Headers {
 		if h.Name == "Subject" {
 			return h.Value
@@ -180,10 +177,8 @@ func parseSubject(m *gmail.MessagePart) string {
 }
 
 func parseBody(m *gmail.MessagePart) (string, error) {
-	log.Printf("mimetype is %s\n", m.MimeType)
 	if strings.HasPrefix(m.MimeType, "multipart") {
 		for _, p := range m.Parts {
-			log.Printf("part mimetype is %s\n", p.MimeType)
 			if p.MimeType == "text/plain" {
 				data, err := base64.URLEncoding.DecodeString(p.Body.Data)
 				if err != nil {
