@@ -3,7 +3,8 @@ MAINTAINER Siddhartha Basu<siddhartha-basu@northwestern.edu>
 
 RUN set -ex \
     && apk add --no-cache --virtual git \
-    && apk add --no-cache --virtual bash
+    && apk add --no-cache --virtual bash \
+    && apk add --no-cache --virtual tzdata
 COPY go-wrapper /usr/local/bin/
 RUN mkdir -p /go/src/app
 WORKDIR /go/src/app
@@ -15,3 +16,5 @@ COPY . /go/src/app
 RUN go-wrapper download \
     && go-wrapper install
 EXPOSE 9998
+
+ENV TZ America/Chicago
