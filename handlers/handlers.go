@@ -53,6 +53,12 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	}
 	dicty.Logger.Printf("current history id %d\n", histId)
 	dicty.Logger.Printf("mailbox history id %d\n", u.HistoryID)
+	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
+	if err != nil {
+		dicty.Logger.Printf("error in setting history %d %s\n", u.HistoryID, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	histList, err := dicty.GetHistories(histId)
 	if err != nil {
@@ -98,14 +104,6 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 			return
 		}
 	}
-
-	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
-	if err != nil {
-		dicty.Logger.Printf("error in setting history %d %s\n", u.HistoryID, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	srvMsg := fmt.Sprintf("created %d issues", len(issues))
 	log.Println(srvMsg)
 	w.Write([]byte(srvMsg))
