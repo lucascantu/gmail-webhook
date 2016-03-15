@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 
 	"golang.org/x/net/context"
 
@@ -87,15 +88,19 @@ func RunServer(c *cli.Context) {
 		defer l.Close()
 		logger = log.New(l, "gmail-webhook", log.Lshortfile)
 	}
-
+	rgxp, err := regexp.Compile(`Order_Type:(\w+)\|(\w+)`)
+	if err != nil {
+		log.Fatalf("error in creating regexp %s\n", err)
+	}
 	dsc := &handlers.DscClient{
-		Gmail:      gmClient,
-		Github:     ghClient,
-		Label:      lm.Name2Id(c.String("label")),
-		Repository: c.String("repository"),
-		Owner:      c.String("owner"),
-		HistoryDbh: hdb,
-		Logger:     logger,
+		Gmail:       gmClient,
+		Github:      ghClient,
+		Label:       lm.Name2Id(c.String("label")),
+		Repository:  c.String("repository"),
+		Owner:       c.String("owner"),
+		HistoryDbh:  hdb,
+		Logger:      logger,
+		TypeMatcher: rgxp,
 	}
 	dscChain := apollo.New(
 		apollo.Wrap(logMw.LoggerMiddleware),

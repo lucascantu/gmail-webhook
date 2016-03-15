@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/dictybase/gmail-webhook/history"
@@ -17,13 +18,14 @@ import (
 )
 
 type DscClient struct {
-	Gmail      *gmail.Service
-	Github     *github.Client
-	Label      string
-	Repository string
-	Owner      string
-	HistoryDbh *history.HistoryDb
-	Logger     *log.Logger
+	Gmail       *gmail.Service
+	Github      *github.Client
+	Label       string
+	Repository  string
+	Owner       string
+	HistoryDbh  *history.HistoryDb
+	Logger      *log.Logger
+	TypeMatcher *regexp.Regexp
 }
 
 type user struct {
@@ -166,7 +168,37 @@ func (dicty *DscClient) GetGithubIssues(msgs []*gmail.Message) ([]*github.IssueR
 		if err != nil {
 			return issues, fmt.Errorf("error in parsing body %s\n", err)
 		}
-		issues = append(issues, &github.IssueRequest{Title: &title, Body: &body})
+		matches := dicty.TypeMatcher.FindStringSubmatch(body)
+		if matches == nil {
+			issues = append(issues, &github.IssueRequest{Title: &title, Body: &body})
+		} else if matches[1] == "strain" && matches[2] == "plasmid" {
+			issues = append(
+				issues,
+				&github.IssueRequest{
+					Title:  &title,
+					Body:   &body,
+					Labels: &[]string{"Strain Order", "Plasmid Order"},
+				},
+			)
+		} else if matches[1] == "none" && matches[2] == "plasmid" {
+			issues = append(
+				issues,
+				&github.IssueRequest{
+					Title:  &title,
+					Body:   &body,
+					Labels: &[]string{"Plasmid Order"},
+				},
+			)
+		} else {
+			issues = append(
+				issues,
+				&github.IssueRequest{
+					Title:  &title,
+					Body:   &body,
+					Labels: &[]string{"Strain Order"},
+				},
+			)
+		}
 	}
 	return issues, nil
 }
