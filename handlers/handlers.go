@@ -23,6 +23,7 @@ type DscClient struct {
 	Repository string
 	Owner      string
 	HistoryDbh *history.HistoryDb
+	Logger     *log.Logger
 }
 
 type user struct {
@@ -34,50 +35,54 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 	payload, _ := ctx.Value("payload").(*middlewares.GmailPayload)
 	data, err := base64.URLEncoding.DecodeString(payload.Message.Data)
 	if err != nil {
-		log.Printf("error in decoding base64 data %s\n", err)
+		dicty.Logger.Printf("error in decoding base64 data %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var u user
 	if err := json.NewDecoder(bytes.NewReader(data)).Decode(&u); err != nil {
-		log.Printf("error in decoding json data %s\n", err)
+		dicty.Logger.Printf("error in decoding json data %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	histId, err := dicty.HistoryDbh.GetCurrentHistory()
 	if err != nil {
-		log.Printf("error in getting current history %s\n", err)
+		dicty.Logger.Printf("error in getting current history %s\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	dicty.Logger.Printf("current history id %d\n", histId)
+	dicty.Logger.Printf("mailbox history id %d\n", u.HistoryID)
 
 	histList, err := dicty.GetHistories(histId)
 	if err != nil {
-		log.Print(err.Error())
+		dicty.Logger.Print(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(histList) == 0 {
-		log.Println("got no history")
+		dicty.Logger.Println("got no history")
 		w.Write([]byte("got no history"))
 		return
 	}
+	log.Printf("got %d histories\n", len(histList))
 
 	messages, err := dicty.GetMatchingMessages(histList)
 	if err != nil {
-		log.Print(err.Error())
+		dicty.Logger.Print(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(messages) == 0 {
-		log.Println("got no messages matching label")
+		dicty.Logger.Println("got no messages matching label")
 		w.Write([]byte("got no messages matching label"))
 		return
 	}
+	log.Printf("%d messages matches histories\n", len(messages))
 
 	issues, err := dicty.GetGithubIssues(messages)
 	if err != nil {
-		log.Print(err.Error())
+		dicty.Logger.Print(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,7 +93,7 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 			gs,
 		)
 		if err != nil {
-			log.Println("error in creating github issue %s\n", err)
+			dicty.Logger.Println("error in creating github issue %s\n", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -96,12 +101,13 @@ func (dicty *DscClient) StockOrderHandler(ctx context.Context, w http.ResponseWr
 
 	err = dicty.HistoryDbh.SetCurrentHistory(u.HistoryID)
 	if err != nil {
-		log.Printf("error in setting history %d %s\n", u.HistoryID, err)
+		dicty.Logger.Printf("error in setting history %d %s\n", u.HistoryID, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	srvMsg := fmt.Sprintf("created %d issues", len(issues))
+	log.Println(srvMsg)
 	w.Write([]byte(srvMsg))
 }
 

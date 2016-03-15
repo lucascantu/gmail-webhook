@@ -78,6 +78,16 @@ func RunServer(c *cli.Context) {
 		log.Fatalf("given label %s does not exist\n", c.String("label"))
 	}
 
+	logger := log.New(os.Stderr, "gmail-webhook", log.Lshortfile)
+	if c.IsSet("app-log") {
+		l, err := os.Create(c.String("app-log"))
+		if err != nil {
+			log.Fatalf("error creating log file %s\n", err)
+		}
+		defer l.Close()
+		logger = log.New(l, "gmail-webhook", log.Lshortfile)
+	}
+
 	dsc := &handlers.DscClient{
 		Gmail:      gmClient,
 		Github:     ghClient,
@@ -85,6 +95,7 @@ func RunServer(c *cli.Context) {
 		Repository: c.String("repository"),
 		Owner:      c.String("owner"),
 		HistoryDbh: hdb,
+		Logger:     logger,
 	}
 	dscChain := apollo.New(
 		apollo.Wrap(logMw.LoggerMiddleware),

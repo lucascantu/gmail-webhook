@@ -118,7 +118,11 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "log,l",
-					Usage: "Name of the log file(optional), default goes to stderr",
+					Usage: "Name of the web request log file(optional), default goes to stderr",
+				},
+				cli.StringFlag{
+					Name:  "app-log,apl",
+					Usage: "Name of the application log file(optional), default goes to stderr",
 				},
 				cli.IntFlag{
 					Name:  "port",
